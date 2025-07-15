@@ -68,6 +68,35 @@ python app1.py
 
 ---
 
+
+🔑 Google Cloud CLI Setup & Vision API Authentication
+
+To use the Google Vision API client library, you need to authenticate your local environment with Google Cloud. Follow these steps:
+
+### 1. **Install the Google Cloud CLI**
+
+- Download and install the Google Cloud CLI from the [official documentation](https://cloud.google.com/sdk/docs/install).
+
+### 2. **Initialize and Authenticate**
+
+Open a terminal and run:
+
+```sh
+gcloud init
+```
+- Follow the prompts to log in with your Google account and select your project.
+
+### 3. **Enable the Vision API**
+
+If you haven’t already, enable the Vision API for your project:
+
+```sh
+gcloud services enable vision.googleapis.com
+```
+
+---
+
+
 ## 📝 Deployment
 
 - Ready for deployment on Render or similar platforms.
