@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard | Snap_Fix{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 1150px;">
+  <!-- Stat Cards -->
+  <div class="row g-4 mb-4" role="region" aria-label="Issue Statistics">
+    {% set reported = issues|selectattr('status', 'equalto', 'reported')|list|length %}
+    {% set inprogress = issues|selectattr('status', 'equalto', 'in-progress')|list|length %}
+    {% set resolved = issues|selectattr('status', 'equalto', 'resolved')|list|length %}
+    <div class="col-md-4">
+      <div class="card glass text-center p-3 h-100 animate__animated animate__fadeInUp" style="border-left: 6px solid var(--color-danger);">
+        <div class="fs-1 mb-2 gradient-text" aria-label="{{ reported }} issues reported">{{ reported }}</div>
+        <div class="fw-semibold">Reported</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card glass text-center p-3 h-100 animate__animated animate__fadeInUp animate__delay-1s" style="border-left: 6px solid var(--color-warning);">
+        <div class="fs-1 mb-2" style="color:var(--color-warning)" aria-label="{{ inprogress }} issues in progress">{{ inprogress }}</div>
+        <div class="fw-semibold">In Progress</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card glass text-center p-3 h-100 animate__animated animate__fadeInUp animate__delay-2s" style="border-left: 6px solid var(--color-success);">
+        <div class="fs-1 mb-2" style="color:var(--color-success)" aria-label="{{ resolved }} issues resolved">{{ resolved }}</div>
+        <div class="fw-semibold">Resolved</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Controls -->
+  <div class="card glass shadow p-3 mb-4 animate__animated animate__fadeInUp">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label for="categoryFilter" class="form-label">Filter by Category</label>
+        <select class="form-select" id="categoryFilter" aria-label="Filter issues by category">
+          <option value="">All Categories</option>
+          <option value="potholes">Potholes</option>
+          <option value="streetlights">Streetlights</option>
+          <option value="garbage">Garbage/Waste</option>
+          <option value="traffic_signals">Traffic Signals</option>
+          <option value="road_signs">Road Signs</option>
+          <option value="sidewalks">Sidewalks</option>
+          <option value="drainage">Drainage</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="priorityFilter" class="form-label">Filter by Priority</label>
+        <select class="form-select" id="priorityFilter" aria-label="Filter issues by priority">
+          <option value="">All Priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="statusFilter" class="form-label">Filter by Status</label>
+        <select class="form-select" id="statusFilter" aria-label="Filter issues by status">
+          <option value="">All Statuses</option>
+          <option value="reported">Reported</option>
+          <option value="in-progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()" aria-label="Clear all filters">
+          <i class="bi bi-x-circle me-2"></i>Clear Filters
+        </button>
+      </div>
+    </div>
+  </div>
+
+    <!-- Button to View Map -->
+  <div class="d-flex justify-content-center mb-3">
+    <a href="{{ url_for('view_map') }}" class="btn btn-success shadow" style="transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" aria-label="View all reported issues on map">View Reported Issues on Map</a>
+  </div>
+
+  <h1 class="mb-4 text-center brand-primary">Admin Dashboard</h1>
+
+    <!-- Issues Table -->
+  <div class="table-responsive animate__animated animate__fadeInUp animate__delay-1s">
+    <table class="table table-bordered align-middle bg-white table-hover table-striped" style="border-radius: 14px; overflow: hidden;" role="table" aria-label="All reported issues">
+      <thead class="table-light sticky-top" style="z-index: 2;">
+        <tr>
+          <th scope="col">Description</th>
+          <th scope="col">Category</th>
+          <th scope="col">Priority</th>
+          <th scope="col">Location</th>
+          <th scope="col">Status</th>
+          <th scope="col">Image</th>
+          <th scope="col">Action</th>
+        </tr>
+      </thead>
+      <tbody id="issuesTableBody">
+        {% for issue in issues %}
+        <tr style="transition: background 0.2s;" data-category="{{ issue.category }}" data-priority="{{ issue.priority }}" data-status="{{ issue.status }}">
+          <td>{{ issue.description }}</td>
+          <td>
+            <span class="badge rounded-pill bg-secondary text-white text-capitalize" aria-label="Category: {{ issue.category }}">
+              {{ issue.category.replace('_', ' ') }}
+            </span>
+          </td>
+          <td>
+            {% set priority_colors = {'low': 'success', 'medium': 'warning', 'high': 'danger', 'urgent': 'danger'} %}
+            {% set priority_icons = {'low': 'bi-arrow-down-circle', 'medium': 'bi-dash-circle', 'high': 'bi-exclamation-triangle', 'urgent': 'bi-exclamation-circle-fill'} %}
+            <span class="badge rounded-pill bg-{{ priority_colors[issue.priority] }} text-white" aria-label="Priority: {{ issue.priority }}">
+              <i class="bi {{ priority_icons[issue.priority] }}" aria-hidden="true"></i>
+              {{ issue.priority|title }}
+            </span>
+          </td>
+          <td>{{ issue.location }}</td>
+          <td>
+            {% set status = issue.status.lower() %}
+            <span class="status-badge d-inline-flex align-items-center gap-1 animate__animated animate__pulse animate__infinite"
+              {% if status == 'reported' %}style="background:var(--color-danger);color:#fff;"{% elif status == 'in-progress' %}style="background:var(--color-warning);color:#23272f;"{% elif status == 'resolved' %}style="background:var(--color-success);color:#fff;"{% else %}style="background:var(--color-border);color:#23272f;"{% endif %}
+              aria-label="Status: {{ issue.status }}">
+              {% if status == 'reported' %}<i class="bi bi-exclamation-circle" aria-hidden="true"></i>{% elif status == 'in-progress' %}<i class="bi bi-hourglass-split" aria-hidden="true"></i>{% elif status == 'resolved' %}<i class="bi bi-check-circle" aria-hidden="true"></i>{% endif %}
+              {{ issue.status }}
+            </span>
+          </td>
+          <td>
+            <img src="{{ url_for('static', filename=issue.image_path) }}" alt="Issue image for {{ issue.description }}" class="img-thumbnail shadow-sm" style="max-width: 100px; cursor: pointer; border-radius: 8px; transition: box-shadow 0.2s;" data-bs-toggle="modal" data-bs-target="#imageModal" data-image="{{ url_for('static', filename=issue.image_path) }}" role="button" tabindex="0" aria-label="View image for {{ issue.description }}">
+          </td>
+          <td>
+            <form action="/update_status/{{ issue.id }}" method="POST" class="d-flex align-items-center gap-2" aria-label="Update status for issue {{ issue.id }}">
+              <select name="status" class="form-select form-select-sm me-2" aria-label="Select new status for {{ issue.description }}">
+                <option value="reported" {% if issue.status == 'reported' %}selected{% endif %}>Reported</option>
+                <option value="in-progress" {% if issue.status == 'in-progress' %}selected{% endif %}>In Progress</option>
+                <option value="resolved" {% if issue.status == 'resolved' %}selected{% endif %}>Resolved</option>
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm" style="transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" aria-label="Update status for {{ issue.description }}">Update</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </div>
+
+  <!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content animate__animated animate__zoomIn animate__faster">
+      <div class="modal-header border-0">
+        <h5 class="modal-title gradient-text" id="imageModalLabel">Issue Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close modal"></button>
+        </div>
+      <div class="modal-body text-center">
+        <img src="" id="modalImage" class="img-fluid rounded shadow-lg animate__animated animate__fadeIn" style="max-height: 70vh;" alt="Issue image">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<!-- Animate.css for animations -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<!-- Bootstrap Icons for status icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  /* Fix dropdown arrow visibility in dark mode for all browsers */
+  body.dark-mode select.form-select,
+  body.dark-mode .form-select {
+    background-color: var(--color-bg-dark, #23272f) !important;
+    color: var(--color-text, #fff) !important;
+    border-color: var(--color-border, #444) !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='white' class='bi bi-caret-down-fill' viewBox='0 0 16 16'><path d='M7.247 11.14l-4.796-5.481C1.885 5.21 2.081 4.5 2.659 4.5h10.682c.578 0 .774.71.208 1.159l-4.796 5.48a1 1 0 0 1-1.466 0z'/></svg>") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 0.75rem center !important;
+    background-size: 1.25em 1.25em !important;
+  }
+  /* Webkit fallback for select arrow */
+  body.dark-mode select.form-select::-webkit-input-placeholder {
+    color: #fff !important;
+  }
+  body.dark-mode select.form-select::-ms-expand {
+    color: #fff !important;
+    background: transparent !important;
+  }
+  /* Ensure dark mode toggle button is styled and visible for all users */
+  .dark-mode-toggle {
+    background: var(--color-glass, rgba(255,255,255,0.15));
+    border: none;
+    color: var(--color-text, #23272f);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    transition: background 0.2s, color 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .dark-mode .dark-mode-toggle {
+    background: var(--color-glass-dark, rgba(30,30,30,0.25));
+    color: #fff;
+  }
+  .dark-mode-toggle:focus {
+    outline: 2px solid var(--color-primary, #0d6efd);
+    outline-offset: 2px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// JavaScript to update modal with clicked image (Bootstrap 5)
+const imageModal = document.getElementById('imageModal');
+if (imageModal) {
+  imageModal.addEventListener('show.bs.modal', function (event) {
+    const img = event.relatedTarget;
+    const imageUrl = img.getAttribute('data-image');
+    const modalImg = document.getElementById('modalImage');
+    modalImg.src = imageUrl;
+  });
+}
+
+// Filtering functionality
+function filterTable() {
+  const categoryFilter = document.getElementById('categoryFilter').value;
+  const priorityFilter = document.getElementById('priorityFilter').value;
+  const statusFilter = document.getElementById('statusFilter').value;
+  
+  const rows = document.querySelectorAll('#issuesTableBody tr');
+  
+  rows.forEach(row => {
+    const category = row.getAttribute('data-category');
+    const priority = row.getAttribute('data-priority');
+    const status = row.getAttribute('data-status');
+    
+    const categoryMatch = !categoryFilter || category === categoryFilter;
+    const priorityMatch = !priorityFilter || priority === priorityFilter;
+    const statusMatch = !statusFilter || status === statusFilter;
+    
+    if (categoryMatch && priorityMatch && statusMatch) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function clearFilters() {
+  document.getElementById('categoryFilter').value = '';
+  document.getElementById('priorityFilter').value = '';
+  document.getElementById('statusFilter').value = '';
+  filterTable();
+}
+
+// Add event listeners for filters
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('categoryFilter').addEventListener('change', filterTable);
+  document.getElementById('priorityFilter').addEventListener('change', filterTable);
+  document.getElementById('statusFilter').addEventListener('change', filterTable);
+});
+
+// Admin status update with toasts
+document.addEventListener('DOMContentLoaded', function() {
+  const statusForms = document.querySelectorAll('form[action^="/update_status/"]');
+  statusForms.forEach(form => {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const issueId = form.action.split('/').pop();
+      const status = formData.get('status');
+      
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          showSuccess(`Status updated to ${status}!`, 'Success!');
+          // Update the status badge in the UI
+          const statusBadge = form.closest('tr').querySelector('.status-badge');
+          if (statusBadge) {
+            statusBadge.textContent = status;
+            statusBadge.className = 'status-badge d-inline-flex align-items-center gap-1 animate__animated animate__pulse animate__infinite';
+            if (status === 'reported') {
+              statusBadge.style = 'background:var(--color-danger);color:#fff;';
+              statusBadge.innerHTML = '<i class="bi bi-exclamation-circle" aria-hidden="true"></i> ' + status;
+            } else if (status === 'in-progress') {
+              statusBadge.style = 'background:var(--color-warning);color:#23272f;';
+              statusBadge.innerHTML = '<i class="bi bi-hourglass-split" aria-hidden="true"></i> ' + status;
+            } else if (status === 'resolved') {
+              statusBadge.style = 'background:var(--color-success);color:#fff;';
+              statusBadge.innerHTML = '<i class="bi bi-check-circle" aria-hidden="true"></i> ' + status;
+            }
+            statusBadge.setAttribute('aria-label', `Status: ${status}`);
+            // Update the data attribute for filtering
+            form.closest('tr').setAttribute('data-status', status);
+          }
+        } else {
+          showError('Failed to update status.', 'Error!');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showError('An error occurred while updating status.', 'Error!');
+      }
+    });
+  });
+    });
+  </script>
+{% endblock %}

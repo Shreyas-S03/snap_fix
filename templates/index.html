@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% block title %}Report Issue | Snap_Fix{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 800px;">
+  <h1 class="mb-4 text-center brand-primary gradient-text">Report an Issue</h1>
+  <div class="mb-3">
+    <label for="map" class="form-label">Select Location on Map</label>
+    <div id="map" style="height: 350px; border-radius: 8px; background: #fff;"></div>
+  </div>
+  <div class="card glass shadow p-4 animate__animated animate__fadeInUp">
+    <form id="issue-form" enctype="multipart/form-data" aria-label="Issue reporting form">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="location" name="location" placeholder="Location" required aria-describedby="location-help" autocomplete="off">
+            <label for="location">Location</label>
+            <div id="location-help" class="form-text visually-hidden">Enter the location where the issue occurred</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="description" name="description" placeholder="Issue Description" required aria-describedby="description-help">
+            <label for="description">Issue Description</label>
+            <div id="description-help" class="form-text visually-hidden">Describe the issue you are reporting</div>
+          </div>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="form-floating mb-3">
+            <select class="form-select" id="category" name="category" required aria-describedby="category-help">
+              <option value="potholes">Potholes</option>
+              <option value="streetlights">Streetlights</option>
+              <option value="garbage">Garbage/Waste</option>
+              <option value="traffic_signals">Traffic Signals</option>
+              <option value="road_signs">Road Signs</option>
+              <option value="sidewalks">Sidewalks</option>
+              <option value="drainage">Drainage</option>
+              <option value="other">Other</option>
+            </select>
+            <label for="category">Issue Category</label>
+            <div id="category-help" class="form-text visually-hidden">Select the category that best describes the issue</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-floating mb-3">
+            <select class="form-select" id="priority" name="priority" required aria-describedby="priority-help">
+              <option value="low">Low Priority</option>
+              <option value="medium" selected>Medium Priority</option>
+              <option value="high">High Priority</option>
+              <option value="urgent">Urgent</option>
+            </select>
+            <label for="priority">Priority Level</label>
+            <div id="priority-help" class="form-text visually-hidden">Select the priority level for this issue</div>
+    </div>
+    </div>
+      </div>
+      <div class="mb-3">
+        <label for="file" class="form-label">Upload Image</label>
+        <input type="file" class="form-control" id="file" name="file" accept="image/*" required aria-describedby="file-help">
+        <div id="file-help" class="form-text">Please upload an image of the issue (JPG, PNG, GIF)</div>
+        <div id="image-preview-container" class="mt-3 visually-hidden">
+          <label class="form-label">Image Preview:</label>
+          <img id="image-preview" src="#" alt="Image preview" class="img-fluid rounded shadow" style="max-height: 220px;"/>
+        </div>
+        <div id="ai-feedback" class="mt-2 visually-hidden"></div>
+    </div>
+      <input type="hidden" id="latitude" name="latitude">
+      <input type="hidden" id="longitude" name="longitude">
+      <div class="d-grid">
+        <button type="submit" class="btn btn-primary" style="transition: transform 0.2s ease-in-out;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" aria-label="Submit issue report">Submit Issue</button>
+    </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  #map { min-height: 350px; background: #fff !important; box-shadow: none !important; backdrop-filter: none !important; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places"></script>
+  <script>
+let map, marker, autocomplete, geocoder;
+const defaultLatLng = { lat: 12.976558685302734, lng: 77.57107543945312 };
+
+function initMapAndAutocomplete() {
+      geocoder = new google.maps.Geocoder();
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: defaultLatLng,
+        zoom: 13,
+    disableDefaultUI: false,
+    gestureHandling: 'greedy',
+    backgroundColor: '#fff',
+      });
+      marker = new google.maps.Marker({
+    position: defaultLatLng,
+        map: map,
+    draggable: true,
+    animation: google.maps.Animation.DROP
+    // Removed custom icon for default red pin
+  });
+  // Set initial hidden fields
+  document.getElementById('latitude').value = defaultLatLng.lat;
+  document.getElementById('longitude').value = defaultLatLng.lng;
+
+  // Autocomplete for address
+  autocomplete = new google.maps.places.Autocomplete(document.getElementById('location'), {
+    fields: ['geometry', 'formatted_address'],
+    types: ['geocode'],
+  });
+  autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+    if (!place.geometry || !place.geometry.location) return;
+    const lat = place.geometry.location.lat();
+    const lng = place.geometry.location.lng();
+    map.setCenter({ lat, lng });
+    marker.setPosition({ lat, lng });
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lng;
+  });
+
+  // Drag marker to update address and hidden fields
+  marker.addListener('dragend', function() {
+    const pos = marker.getPosition();
+    map.setCenter(pos);
+    document.getElementById('latitude').value = pos.lat();
+    document.getElementById('longitude').value = pos.lng();
+    geocoder.geocode({ location: pos }, function(results, status) {
+      if (status === 'OK' && results[0]) {
+        document.getElementById('location').value = results[0].formatted_address;
+      }
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  initMapAndAutocomplete();
+});
+
+// Image preview and Vision API analysis
+    const fileInput = document.getElementById('file');
+const previewContainer = document.getElementById('image-preview-container');
+const previewImg = document.getElementById('image-preview');
+const aiFeedback = document.getElementById('ai-feedback');
+const categorySelect = document.getElementById('category');
+const prioritySelect = document.getElementById('priority');
+const submitBtn = document.querySelector('#issue-form button[type="submit"]');
+let aiAnalysisInProgress = false;
+
+// Add spinner element
+const spinner = document.createElement('span');
+spinner.className = 'spinner-border spinner-border-sm ms-2';
+spinner.setAttribute('role', 'status');
+spinner.setAttribute('aria-hidden', 'true');
+spinner.style.display = 'none';
+submitBtn.appendChild(spinner);
+
+fileInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+      if (file) {
+    // Show image preview
+        const reader = new FileReader();
+    reader.onload = function(ev) {
+      previewImg.src = ev.target.result;
+      previewContainer.classList.remove('visually-hidden');
+        };
+        reader.readAsDataURL(file);
+
+    // Disable submit and show spinner
+    aiAnalysisInProgress = true;
+    submitBtn.disabled = true;
+    spinner.style.display = '';
+
+    // Send image to Vision API for analysis
+    const formData = new FormData();
+    formData.append('file', file);
+    aiFeedback.classList.add('visually-hidden');
+    fetch('/analyze_image', {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        aiFeedback.textContent = data.error;
+        aiFeedback.classList.remove('visually-hidden');
+        showError(data.error, 'AI Analysis Error');
+      } else {
+        // Auto-fill category and priority
+        if (data.suggested_category) {
+          categorySelect.value = data.suggested_category;
+        }
+        if (data.suggested_priority) {
+          prioritySelect.value = data.suggested_priority;
+        }
+        // Show feedback
+        let feedbackMsg = `AI Suggestion: Category set to <b>${categorySelect.options[categorySelect.selectedIndex].text}</b>, Priority set to <b>${prioritySelect.options[prioritySelect.selectedIndex].text}</b>.`;
+        if (data.quality_feedback) {
+          feedbackMsg += `<br><span class='text-${data.quality_feedback.includes('good') ? 'success' : 'danger'}'>${data.quality_feedback}</span>`;
+        }
+        aiFeedback.innerHTML = feedbackMsg;
+        aiFeedback.classList.remove('visually-hidden');
+        showSuccess(`Category: ${categorySelect.options[categorySelect.selectedIndex].text}, Priority: ${prioritySelect.options[prioritySelect.selectedIndex].text} auto-filled by AI.`, 'AI Suggestion');
+      }
+      // Enable submit and hide spinner
+      aiAnalysisInProgress = false;
+      submitBtn.disabled = false;
+      spinner.style.display = 'none';
+    })
+    .catch(err => {
+      aiFeedback.textContent = 'AI analysis failed.';
+      aiFeedback.classList.remove('visually-hidden');
+      showError('AI analysis failed.', 'AI Error');
+      aiAnalysisInProgress = false;
+      submitBtn.disabled = false;
+      spinner.style.display = 'none';
+    });
+  } else {
+    previewContainer.classList.add('visually-hidden');
+    aiFeedback.classList.add('visually-hidden');
+    aiAnalysisInProgress = false;
+    submitBtn.disabled = false;
+    spinner.style.display = 'none';
+  }
+});
+
+document.getElementById('issue-form').addEventListener('submit', async function(e) {
+  if (aiAnalysisInProgress) {
+    showError('Please wait for AI analysis to complete before submitting.', 'AI Analysis In Progress');
+    e.preventDefault();
+    return;
+  }
+  e.preventDefault();
+  const formData = new FormData(this);
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Submitting...';
+  submitBtn.disabled = true;
+  submitBtn.setAttribute('aria-label', 'Submitting issue report...');
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+const result = await response.json();
+if (response.ok) {
+      showSuccess(result.message, 'Success!');
+      this.reset();
+} else {
+      showError(result.error || 'Failed to submit issue.', 'Error!');
+}
+} catch (error) {
+    console.error('Error:', error);
+    showError('An error occurred while submitting the issue.', 'Error!');
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    submitBtn.setAttribute('aria-label', 'Submit issue report');
+  }
+});
+
+// Animated validation feedback
+const form = document.getElementById('issue-form');
+form.addEventListener('submit', function(e) {
+  let valid = true;
+  ['description','location','file','category','priority'].forEach(function(id) {
+    const input = document.getElementById(id);
+    if (!input.value.trim()) {
+      input.classList.add('is-invalid','animate__shakeX');
+      input.setAttribute('aria-invalid', 'true');
+      valid = false;
+    } else {
+      input.classList.remove('is-invalid','animate__shakeX');
+      input.setAttribute('aria-invalid', 'false');
+    }
+  });
+  if (!valid) {
+    e.preventDefault();
+    setTimeout(()=>{
+      ['description','location','file','category','priority'].forEach(function(id){
+        document.getElementById(id).classList.remove('animate__shakeX');
+      });
+    }, 800);
+}
+});
+
+// Ensure dark mode toggle works and icon is correct on this page
+function setDarkMode(enabled) {
+  if (enabled) {
+    document.body.classList.add('dark-mode');
+    localStorage.setItem('darkMode', 'true');
+    var icon = document.getElementById('darkModeIcon');
+    if (icon) icon.className = 'bi bi-moon-stars-fill';
+  } else {
+    document.body.classList.remove('dark-mode');
+    localStorage.setItem('darkMode', 'false');
+    var icon = document.getElementById('darkModeIcon');
+    if (icon) icon.className = 'bi bi-moon';
+  }
+}
+document.addEventListener('DOMContentLoaded', function() {
+  // Inject dark mode toggle if not present
+  if (!document.getElementById('darkModeToggle')) {
+    var navbar = document.querySelector('.navbar .d-flex.align-items-center');
+    if (navbar) {
+      var btn = document.createElement('button');
+      btn.id = 'darkModeToggle';
+      btn.className = 'btn btn-outline-secondary btn-sm px-3';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Toggle dark mode');
+      btn.style.transition = 'transform 0.2s ease-in-out';
+      var icon = document.createElement('span');
+      icon.id = 'darkModeIcon';
+      icon.className = 'bi bi-moon';
+      btn.appendChild(icon);
+      navbar.insertBefore(btn, navbar.firstChild);
+    }
+  }
+  // Set initial state
+  const darkPref = localStorage.getItem('darkMode');
+  if (darkPref === 'true' || (darkPref === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    setDarkMode(true);
+  } else {
+    setDarkMode(false);
+  }
+  var toggle = document.getElementById('darkModeToggle');
+  if (toggle) {
+    toggle.addEventListener('click', function() {
+      setDarkMode(!document.body.classList.contains('dark-mode'));
+    });
+}
+});
+</script>
+{% endblock %}

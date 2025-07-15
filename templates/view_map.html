@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}View Map | Snap_Fix{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 1200px;">
+  <h1 class="mb-4 text-center brand-primary gradient-text">Reported Issues Map</h1>
+  
+  <!-- Map Container -->
+  <div class="card glass shadow p-3 animate__animated animate__fadeInUp">
+    <div id="map" style="height: 600px; border-radius: 8px; background: #fff;"></div>
+  </div>
+  
+  <!-- Legend -->
+  <div class="card glass shadow p-3 mt-3 animate__animated animate__fadeInUp animate__delay-1s">
+    <h5 class="mb-3">Map Information</h5>
+    <div class="row g-2">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center">
+          <div style="width: 20px; height: 20px; background: #dc3545; border-radius: 50%; margin-right: 8px;"></div>
+          <span>All Issues (Standard Red Pins)</span>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-info-circle me-2"></i>
+          <span>Click pins to view issue details</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<style>
+  #map { min-height: 600px; background: #fff !important; box-shadow: none !important; backdrop-filter: none !important; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}"></script>
+<script>
+let map, infoWindow;
+
+function initMap() {
+  const defaultLatLng = { lat: 12.976558685302734, lng: 77.57107543945312 };
+  
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: defaultLatLng,
+    zoom: 12,
+    disableDefaultUI: false,
+    gestureHandling: 'greedy',
+    backgroundColor: '#fff',
+  });
+
+  infoWindow = new google.maps.InfoWindow();
+
+  // Priority color mapping for standard pins
+  const priorityColors = {
+    'low': '#28a745',
+    'medium': '#ffc107', 
+    'high': '#fd7e14',
+    'urgent': '#dc3545'
+  };
+
+  // Create markers for each issue
+  const issuesData = JSON.parse('{{ issues|tojson|safe }}');
+  
+  if (issuesData && Array.isArray(issuesData)) {
+    issuesData.forEach(function(issue) {
+    if (issue.latitude && issue.longitude) {
+      const position = { lat: parseFloat(issue.latitude), lng: parseFloat(issue.longitude) };
+      
+      // Create standard marker (default red pin for better performance)
+      const marker = new google.maps.Marker({
+        position: position,
+        map: map,
+        title: issue.description,
+        // Using default red pin for optimal performance
+      });
+
+      // Create InfoWindow content
+      const content = `
+        <div style="max-width: 300px; padding: 10px;">
+          <h6 style="margin: 0 0 8px 0; color: #333;">${issue.description}</h6>
+          <div style="margin-bottom: 8px;">
+            <span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; text-transform: capitalize;">
+              ${issue.category.replace('_', ' ')}
+            </span>
+            <span style="background: ${priorityColors[issue.priority] || '#ffc107'}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 4px;">
+              ${issue.priority.charAt(0).toUpperCase() + issue.priority.slice(1)} Priority
+            </span>
+          </div>
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">
+            <strong>Location:</strong> ${issue.location}
+          </p>
+          <img src="/static/${issue.image_path}" alt="Issue image" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px;">
+        </div>
+      `;
+
+      // Add click listener to marker
+      marker.addListener('click', function() {
+        infoWindow.setContent(content);
+        infoWindow.open(map, marker);
+      });
+    }
+  });
+  }
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', initMap);
+</script>
+{% endblock %}
