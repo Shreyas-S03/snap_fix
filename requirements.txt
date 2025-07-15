@@ -4,4 +4,5 @@ Werkzeug
 psycopg2-binary
 gunicorn
 requests
-google-cloud-vision 
+google-cloud-vision
+python-dotenv
