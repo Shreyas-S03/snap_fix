@@ -19,12 +19,6 @@ Snap_Fix is a modern, AI-powered civic issue reporting platform built with Flask
 
 ---
 
-## 🖼️ Screenshots
-
-<!-- Add screenshots here if you have them, e.g. -->
-<!-- ![User Dashboard](screenshots/user_dashboard.png) -->
-
----
 
 ## 🛠️ Tech Stack
 
@@ -83,15 +77,24 @@ python app1.py
 ---
 
 ## 📁 Project Structure
+<pre>
+<code>
 Snap_Fix/
-app1.py
-requirements.txt
-Procfile
-.env.example
-static/
-uploads/ # User-uploaded images (gitignored)
-templates/
-.html # Jinja2 templates
+├── app1.py
+├── requirements.txt
+├── Procfile
+├── .env.example
+├── static/
+│ └── uploads/ # User-uploaded images (gitignored)
+├── templates/
+│ ├── admin_dashboard.html
+│ ├── index.html
+│ ├── login.html
+│ ├── signup.html
+│ ├── user_dashboard.html
+│ └── view_map.html
+</code>
+</pre>
 
 
 ---
